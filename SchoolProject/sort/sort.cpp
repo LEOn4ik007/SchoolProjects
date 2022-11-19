@@ -1,6 +1,7 @@
 #include <iostream>
 #include <chrono>
 #include <random>
+#include <fstream>
 
 template <typename T>
 void print(const T * data, int size)
@@ -177,15 +178,77 @@ void quickSortStd(T* data, int size)
 template<typename T>
 using SortFunction = void(*)(T*, int);
 
-using Item = int;
+struct SelfCounter
+{
+	static size_t assignments;
+	static size_t comparisons;
+	
+	int data;
+	SelfCounter(int value = 0)
+		: data(value)
+	{}
+
+	SelfCounter(const SelfCounter & rhs) noexcept
+		: data(rhs.data)
+	{
+		++assignments;
+	}
+
+	SelfCounter(SelfCounter && rhs) noexcept
+		: data(rhs.data)
+	{
+		++assignments;
+	}
+
+	SelfCounter & operator=(const SelfCounter & rhs) noexcept
+	{
+		if (this == &rhs)
+			return *this;
+		++assignments;
+		data = rhs.data;
+		return *this;
+	}
+
+	SelfCounter & operator=(SelfCounter && rhs) noexcept
+	{
+		if (this == &rhs)
+			return *this;
+		++assignments;
+		data = rhs.data;
+		return *this;
+	}
+
+	bool operator<(const SelfCounter & rhs) const noexcept
+	{
+		++comparisons;
+		return data < rhs.data;
+	}
+	bool operator>(const SelfCounter& rhs) const noexcept
+	{
+		++comparisons;
+		return data > rhs.data;
+	}
+
+};
+
+size_t SelfCounter::assignments = 0;
+size_t SelfCounter::comparisons = 0;
+
+using Item = SelfCounter;
 
 template<typename T>
 struct StorageItem
 {
 	std::string name;
 	SortFunction<T> sortFunction;
+	size_t assignments{0};
+	size_t comparisons{0};
 	std::chrono::high_resolution_clock::duration duration{};
+	std::unique_ptr<std::ofstream> stream;
 };
+
+std::random_device rd;
+std::mt19937 g(rd());
 
 int main()
 {
@@ -197,40 +260,59 @@ int main()
 		StorageItem<Item>{"Insertion", & insertionSort},
 		StorageItem<Item>{"Merge", & mergeSort},
 		StorageItem<Item>{"Quick", & quickSort},
-		StorageItem<Item>{"Quick(std)",& quickSortStd},
+		StorageItem<Item>{"Quick(std)", & quickSortStd},
 	};
-
-	const int size = 100000;
-	std::unique_ptr<Item[]> data(new Item[size]);
 	
-	std::unique_ptr<Item[]> dataTmp(new Item[size]);
-
-	for (int i = 0; i < size; ++i)
-		data[i] = i;
-//	print(data, size);
-	std::random_device rd;
-	std::mt19937 g(rd());
-
-	const int attempts = 1;
-
-	for (int i = 0; i < attempts; ++i)
+	for (auto & storageItem : storage)
 	{
-		std::shuffle(data.get(), data.get() + size, g);
-		for (auto& storageItem : storage)
-		{
-			std::copy(data.get(), data.get() + size, dataTmp.get());
-			//print(data, size);
-
-			const auto start_time = std::chrono::high_resolution_clock::now();
-			storageItem.sortFunction(dataTmp.get(), size);
-			const auto end_time = std::chrono::high_resolution_clock::now();
-			storageItem.duration += end_time - start_time;
-
-		}
+		storageItem.stream = std::make_unique<std::ofstream>(storageItem.name);
 	}
 	
-	std::cout << "size: " << size << std::endl;
-	for (const auto& storageItem : storage)
-		std::cout << storageItem.name << ": " << std::chrono::duration_cast<std::chrono::microseconds>(storageItem.duration).count() / 1000.0 / attempts << " ms" << std::endl;
+	for (int size = 10000; size <= 100000; size += 10000)
+	{
+
+		std::unique_ptr<Item[]> data(new Item[size]);
+
+		std::unique_ptr<Item[]> dataTmp(new Item[size]);
+
+		for (int i = 0; i < size; ++i)
+			data[i] = i;
+		//	print(data, size);
+		
+		for (auto & storageItem : storage)
+		{
+			storageItem.assignments = 0;
+			storageItem.comparisons = 0;
+			storageItem.duration = {};
+		}
+		
+		const int attempts = 10;
+		for (int i = 0; i < attempts; ++i)
+		{
+			std::shuffle(data.get(), data.get() + size, g);
+			for (auto & storageItem : storage)
+			{
+				std::copy(data.get(), data.get() + size, dataTmp.get());
+				//print(data, size);
+
+				SelfCounter::comparisons = 0;
+				SelfCounter::assignments = 0;
+				const auto start_time = std::chrono::high_resolution_clock::now();
+				storageItem.sortFunction(dataTmp.get(), size);
+				const auto end_time = std::chrono::high_resolution_clock::now();
+				storageItem.duration += end_time - start_time;
+				storageItem.comparisons += SelfCounter::comparisons;
+				storageItem.assignments += SelfCounter::assignments;
+			}
+		}
+
+		std::cout << "size: " << size << std::endl;
+		for (const auto & storageItem : storage)
+		{
+			const auto time = std::chrono::duration_cast<std::chrono::microseconds>(storageItem.duration).count() / 1000.0 / attempts;
+			std::cout << storageItem.name << ": " << time << " ms" << std::endl;
+			(*storageItem.stream) << size << "\t" << time << "\t" << storageItem.comparisons / attempts << "\t" << storageItem.assignments / attempts << std::endl;
+		}
+	}
 	return 0;
 }
