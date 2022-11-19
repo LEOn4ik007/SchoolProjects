@@ -110,29 +110,28 @@ void mergeSort(T * data, int size) noexcept
 	{
 		if (data[lidx] < data[ridx])
 		{
-			tmpData[idx++] = std::move(data[lidx]);
+			tmpData[idx++] = data[lidx];
 			lidx++;
 		}
 		else
 		{
-			tmpData[idx++] = std::move(data[ridx]);
+			tmpData[idx++] = data[ridx];
 			ridx++;
 		}
 
 		if (lidx == left_size)
 		{
-			std::copy(std::make_move_iterator(data + ridx), std::make_move_iterator(data + size), tmpData.get() + idx);
+			std::copy(data + ridx, data + size, tmpData.get() + idx);
 			break;
 		}
 		if (ridx == size)
 		{
-			std::copy(std::make_move_iterator(data + lidx), std::make_move_iterator(data + left_size), tmpData.get() + idx);
+			std::copy(data + lidx, data + left_size, tmpData.get() + idx);
 			break;
 		}
 	}
 
-	std::copy(std::make_move_iterator(tmpData.get()), std::make_move_iterator(tmpData.get() + size), data);
-
+	std::copy(tmpData.get(), tmpData.get() + size, data);
 }
 
 template<typename T>
@@ -266,10 +265,17 @@ int main()
 	for (auto & storageItem : storage)
 	{
 		storageItem.stream = std::make_unique<std::ofstream>(storageItem.name);
+		storageItem.stream->imbue(std::locale("ru_RU"));
 	}
 	
-	for (int size = 10000; size <= 100000; size += 10000)
+	for (int size = 10, step = 10; size <= 100000; size += step)
 	{
+		if (size >= 10000)
+			step = 10000;
+		else if (size >= 1000)
+			step = 1000;
+		else if (size >= 100)
+			step = 100;
 
 		std::unique_ptr<Item[]> data(new Item[size]);
 
