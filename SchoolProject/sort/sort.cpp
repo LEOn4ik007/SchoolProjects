@@ -266,7 +266,8 @@ int main()
 	{
 		storageItem.stream = std::make_unique<std::ofstream>(storageItem.name + ".tsv");
 		storageItem.stream->imbue(std::locale("ru_RU"));
-		(*storageItem.stream) << "size\ttime\tcomparisons\tassignments";
+		(*storageItem.stream) << "size\ttime\tcomparisons\tassignments\n";
+		(*storageItem.stream) << storageItem.name << "\t" << storageItem.name << "\t" << storageItem.name << "\t" << storageItem.name << std::endl;
 	}
 	
 	for (int size = 10, step = 5; size <= 100000; size += step)
