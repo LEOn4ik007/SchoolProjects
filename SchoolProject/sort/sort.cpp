@@ -264,7 +264,7 @@ int main()
 	
 	for (auto & storageItem : storage)
 	{
-		storageItem.stream = std::make_unique<std::ofstream>(storageItem.name + ".csv");
+		storageItem.stream = std::make_unique<std::ofstream>(storageItem.name + ".tsv");
 		storageItem.stream->imbue(std::locale("ru_RU"));
 	}
 	
