@@ -264,18 +264,18 @@ int main()
 	
 	for (auto & storageItem : storage)
 	{
-		storageItem.stream = std::make_unique<std::ofstream>(storageItem.name);
+		storageItem.stream = std::make_unique<std::ofstream>(storageItem.name + ".csv");
 		storageItem.stream->imbue(std::locale("ru_RU"));
 	}
 	
-	for (int size = 10, step = 10; size <= 100000; size += step)
+	for (int size = 10, step = 5; size <= 100000; size += step)
 	{
 		if (size >= 10000)
-			step = 10000;
+			step = 5000;
 		else if (size >= 1000)
-			step = 1000;
+			step = 500;
 		else if (size >= 100)
-			step = 100;
+			step = 50;
 
 		std::unique_ptr<Item[]> data(new Item[size]);
 
